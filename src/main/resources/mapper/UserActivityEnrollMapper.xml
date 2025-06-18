@@ -1,0 +1,106 @@
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.volunteer.mapper.UserActivityEnrollMapper">
+    <resultMap id="activityEnrollmentResultMap" type="com.volunteer.pojo.ActivityEnrollment">
+        <id column="id" property="id" jdbcType="BIGINT" />
+        <result column="user_id" property="userId" jdbcType="BIGINT" />
+        <result column="activity_id" property="activityId" jdbcType="BIGINT" />
+        <result column="enroll_time" property="enrollTime" jdbcType="TIMESTAMP" />
+        <result column="status" property="status" jdbcType="TINYINT" />
+        <result column="explanation" property="explanation" jdbcType="VARCHAR" />
+
+    </resultMap>
+    <resultMap id="enrollmentVOResultMap" type="com.volunteer.pojo.EnrollmentVO">
+        <id column="id" property="id" />
+        <result column="userName" property="userName" />
+        <result column="userNo" property="userNo" />
+        <result column="userEmail" property="userEmail" />
+        <result column="activityName" property="activityName" />
+        <result column="activityContact" property="activityContact" />
+        <result column="status" property="status" />
+        <result column="enrollTime" property="enrollTime" />
+        <result column="explanation" property="explanation" />
+    </resultMap>
+    <!-- 修改查询语句以使用resultMap -->
+    <select id="selectByUserIdAndStatus" resultMap="activityEnrollmentResultMap">
+        SELECT
+        id,
+        user_id,
+        activity_id,
+        enroll_time,
+        status,
+        explanation
+        FROM user_activity_enroll
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY id DESC
+    </select>
+    <!-- 插入报名记录 -->
+    <insert id="insertEnrollment">
+        INSERT INTO user_activity_enroll (user_id, activity_id, enroll_time, status)
+        VALUES (#{userId}, #{activityId}, NOW(), 1)
+    </insert>
+
+    <!-- 查询用户是否已报名（返回计数） -->
+    <select id="checkEnrollment" resultType="int">
+        SELECT COUNT(*) FROM user_activity_enroll
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </select>
+
+
+    <select id="selectById" resultMap="activityEnrollmentResultMap">
+        SELECT * FROM user_activity_enroll WHERE id = #{id}
+    </select>
+
+    <update id="update">
+        UPDATE user_activity_enroll
+        SET status = #{status},
+            explanation = #{explanation}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 逻辑删除（更新状态） -->
+    <update id="updateByPrimaryKeySelective">
+        UPDATE user_activity_enroll
+        <set>
+            <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
+        </set>
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <!-- 物理删除（可选，根据需求使用） -->
+    <delete id="deleteByPrimaryKey">
+        DELETE FROM user_activity_enroll
+        WHERE id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <!-- 联表查报名审核信息 -->
+    <select id="selectAllEnrollmentWithUserAndActivity" resultMap="enrollmentVOResultMap">
+        SELECT
+            e.id AS id,
+            u.name AS userName,
+            u.stu_no AS userNo,
+            u.email AS userEmail,
+            a.name AS activityName,
+            a.contact AS activityContact,
+            e.status AS status,
+            e.enroll_time AS enrollTime,
+            e.explanation AS explanation
+        FROM user_activity_enroll e
+                 LEFT JOIN users u ON e.user_id = u.id
+                 LEFT JOIN volunteer_activity a ON e.activity_id = a.id
+    </select>
+
+    <!-- 修改报名状态 -->
+    <update id="updateEnrollmentStatus">
+        UPDATE user_activity_enroll
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByActivityId">
+        DELETE FROM user_activity_enroll WHERE activity_id=#{activityId}
+    </delete>
+</mapper>

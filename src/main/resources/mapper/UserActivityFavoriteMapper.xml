@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.volunteer.mapper.UserActivityFavoriteMapper">
+
+    <resultMap id="activityResultMap" type="com.volunteer.pojo.Activity">
+        <!-- 原有字段映射保持不变 -->
+        <id column="id" property="id" jdbcType="BIGINT" />
+        <result column="name" property="name" jdbcType="VARCHAR" />
+        <result column="cover_url" property="coverUrl" jdbcType="VARCHAR" />
+        <result column="type" property="type" jdbcType="VARCHAR" />
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+        <result column="duration" property="duration" jdbcType="DOUBLE" />
+        <result column="capacity" property="capacity" jdbcType="INTEGER" />
+        <result column="enrolled_count" property="enrolledCount" jdbcType="INTEGER" />
+        <result column="status" property="status" jdbcType="VARCHAR" />
+        <result column="requirement" property="requirement" jdbcType="VARCHAR" />
+        <result column="contact" property="contact" jdbcType="VARCHAR" />
+        <result column="creator_id" property="creatorId" jdbcType="BIGINT" />
+        <result column="creator_name" property="creatorName" jdbcType="VARCHAR" />
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
+        <result column="favorite_status" property="favoriteStatus" jdbcType="INTEGER" />
+    </resultMap>
+
+    <insert id="insertFavorite" useGeneratedKeys="true">
+        INSERT INTO user_activity_favorite (user_id, activity_id)
+        VALUES (#{userId}, #{activityId})
+        ON DUPLICATE KEY UPDATE status = 1, favorite_time = NOW() <!-- 重复时更新时间 -->
+    </insert>
+
+
+    <update id="cancelFavorite">
+        UPDATE user_activity_favorite
+        SET status = 0
+        WHERE user_id = #{userId} AND activity_id = #{activityId}
+    </update>
+
+    <select id="selectFavoriteActivities" resultMap="activityResultMap">
+        SELECT a.*
+        FROM volunteer_activity a
+                 JOIN user_activity_favorite f
+                      ON a.id = f.activity_id
+        WHERE f.user_id = #{userId}
+          AND f.status = 1
+        ORDER BY f.favorite_time DESC
+    </select>
+
+    <select id="existsFavorite" resultType="boolean">
+        SELECT COUNT(1) > 0
+        FROM user_activity_favorite
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+          AND status = 1
+    </select>
+
+    <select id="getFavoriteActivities" resultMap="activityResultMap">
+        SELECT
+        a.id,
+        a.name,
+        a.cover_url,
+        a.type,
+        a.start_time,
+        a.end_time,
+        a.duration,
+        a.capacity,
+        a.enrolled_count,
+        a.status AS status,  <!-- 明确指定活动状态的别名 -->
+        a.requirement,
+        a.contact,
+        a.creator_id,
+        a.creator_name,
+        a.create_time,
+        a.update_time,
+        uf.status AS favoriteStatus  <!-- 收藏状态的别名 -->
+        FROM volunteer_activity a
+        JOIN user_activity_favorite uf ON a.id = uf.activity_id
+        WHERE uf.user_id = #{userId}
+        AND uf.status = 1  <!-- 只查询已收藏的活动 -->
+        ORDER BY uf.id DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="getFavoriteActivityCount" resultType="int">
+        SELECT COUNT(*)
+        FROM volunteer_activity a
+        JOIN user_activity_favorite uf ON a.id = uf.activity_id
+        WHERE uf.user_id = #{userId}
+        <if test="type == 'can-enroll'">
+            AND a.start_time > NOW()
+        </if>
+        <if test="type == 'cannot-enroll'">
+            AND a.start_time &lt;= NOW()
+        </if>
+    </select>
+
+    <update id="batchCancelFavorites">
+        UPDATE user_activity_favorite
+        SET status = 0
+        WHERE user_id = #{userId}
+        AND activity_id IN
+        <foreach collection="activityIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND status = 1
+    </update>
+</mapper>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.volunteer.mapper.ActivityMapper">
+    <!-- 查询活动列表 -->
+    <resultMap id="activityResultMap" type="com.volunteer.pojo.Activity">
+        <id column="id" property="id" jdbcType="BIGINT" />
+        <result column="name" property="name" jdbcType="VARCHAR" />
+        <result column="cover_url" property="coverUrl" jdbcType="VARCHAR" />
+        <result column="type" property="type" jdbcType="VARCHAR" />
+        <result column="location" property="location" jdbcType="VARCHAR"/>
+        <result column="start_time" property="startTime" jdbcType="TIMESTAMP" />
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+        <result column="duration" property="duration" jdbcType="DOUBLE" />
+        <result column="capacity" property="capacity" jdbcType="INTEGER" />
+        <result column="enrolled_count" property="enrolledCount" jdbcType="INTEGER" />
+        <result column="status" property="status" jdbcType="VARCHAR" />
+        <result column="requirement" property="requirement" jdbcType="VARCHAR" />
+        <result column="contact" property="contact" jdbcType="VARCHAR" />
+        <result column="creator_id" property="creatorId" jdbcType="BIGINT" />
+        <result column="creator_name" property="creatorName" jdbcType="VARCHAR" />
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP" />
+        <result column="version" property="version" jdbcType="BIGINT"/>
+    </resultMap>
+
+    <select id="selectActivityList" resultMap="activityResultMap">
+        SELECT * FROM volunteer_activity
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="weekday != null">
+                AND WEEKDAY(start_time) = #{weekday}
+            </if>
+        </where>
+        ORDER BY start_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 查询活动总数 -->
+    <select id="selectActivityCount" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM volunteer_activity
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="type != null and type != ''">
+                AND type = #{type}
+            </if>
+            <if test="weekday != null">
+                AND WEEKDAY(start_time) = #{weekday}
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据ID查询活动 -->
+    <select id="selectById" resultMap="activityResultMap">
+        SELECT * FROM volunteer_activity WHERE id = #{id}
+    </select>
+
+    <update id="updateEnrolledCount" >
+        UPDATE volunteer_activity
+        SET enrolled_count = enrolled_count + 1  <!-- 关键修改：人数+1 -->
+        WHERE id = #{id}
+        AND status ='报名中'<!-- 校验活动状态 -->
+        AND enrolled_count &lt;#{capacity}
+    </update>
+
+    <update id="decreaseEnrollmentCount">
+        UPDATE volunteer_activity
+        SET enrolled_count = #{newCount},
+        version = version + 1  <!-- 版本号递增 -->
+        WHERE id = #{activityId}
+        AND enrolled_count = #{oldCount}  <!-- 校验旧值 -->
+        AND version = #{version}         <!-- 校验版本 -->
+    </update>
+
+    <update id="updateField">
+        UPDATE volunteer_activity
+        <set>
+            <if test="field == 'name'">name = #{value},</if>
+            <if test="field == 'cover_url'">cover_url = #{value},</if>
+            <if test="field =='location'">location = #{value},</if>
+            <if test="field == 'type'">type = #{value},</if>
+            <if test="field == 'start_time'">start_time = #{value},</if>
+            <if test="field == 'end_time'">end_time = #{value},</if>
+            <if test="field == 'duration'">duration = #{value},</if>
+            <if test="field == 'capacity'">capacity = #{value},</if>
+            <if test="field == 'status'">status = #{value},</if>
+            <if test="field == 'requirement'">requirement = #{value},</if>
+            <if test="field == 'contact'">contact = #{value},</if>
+            <if test="field == 'creator_id'">creator_id = #{value},</if>
+            <if test="field == 'creator_name'">creator_name = #{value},</if>
+            <if test="field == 'create_time'">create_time = #{value},</if>
+            <if test="field == 'update_time'">update_time = #{value},</if>
+            <if test="field == 'version'">version = #{value},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+</mapper>
